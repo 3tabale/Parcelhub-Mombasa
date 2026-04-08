@@ -1,0 +1,120 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required, immutable)
+    //   - name: string (required)
+    //   - email: string (required, email format)
+    //   - role: string (required, enum: client, courier, admin)
+    //   - phone: string (optional)
+    //   - defaultPickup: string (optional)
+    //   - defaultDelivery: string (optional)
+    //   - createdAt: timestamp (required, immutable)
+    //
+    // Collection: parcels
+    // Document ID: {parcelId}
+    // Fields:
+    //   - trackingNumber: string (required, immutable)
+    //   - senderUid: string (required, immutable)
+    //   - recipientName: string (required)
+    //   - recipientPhone: string (required)
+    //   - pickupAddress: string (required)
+    //   - deliveryAddress: string (required)
+    //   - status: string (required, enum: pending, picked-up, sorting, in-transit, delivered, issue)
+    //   - weight: number (required)
+    //   - serviceType: string (required)
+    //   - courierUid: string (optional)
+    //   - createdAt: timestamp (required, immutable)
+    //   - updatedAt: timestamp (required)
+    //   - history: list (optional)
+    //
+    // Collection: lockers
+    // Document ID: {lockerId}
+    // Fields:
+    //   - id: string (required, immutable)
+    //   - locationName: string (required)
+    //   - address: string (required)
+    //   - compartments: list (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "metabale404@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isCourier() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'courier';
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Collection Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.uid == userId &&
+               data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+               isValidEmail(data.email) &&
+               data.role in ['client', 'courier', 'admin'];
+      }
+
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    (request.resource.data.role == 'client' || isAdmin());
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) &&
+                    (request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /parcels/{parcelId} {
+      function isValidParcel(data) {
+        return data.trackingNumber is string &&
+               data.senderUid is string &&
+               data.recipientName is string && data.recipientName.size() < 100 &&
+               data.status in ['pending', 'picked-up', 'sorting', 'in-transit', 'delivered', 'issue'];
+      }
+
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.senderUid || isCourier() || isAdmin());
+      allow create: if isAuthenticated() && isValidParcel(request.resource.data) && request.resource.data.senderUid == request.auth.uid;
+      allow update: if isAuthenticated() && (
+        (request.auth.uid == resource.data.senderUid && request.resource.data.status == resource.data.status) ||
+        isCourier() || isAdmin()
+      ) && isValidParcel(request.resource.data);
+    }
+
+    match /lockers/{lockerId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user information and preferences.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique identifier for the user." },
+        "name": { "type": "string", "description": "Full name of the user." },
+        "email": { "type": "string", "format": "email", "description": "Email address of the user." },
+        "role": { "type": "string", "enum": ["client", "courier", "admin"], "description": "User's role in the system." },
+        "phone": { "type": "string", "description": "Phone number for notifications." },
+        "defaultPickup": { "type": "string", "description": "Default pickup location." },
+        "defaultDelivery": { "type": "string", "description": "Default delivery location." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of profile creation." }
+      },
+      "required": ["uid", "name", "email", "role"]
+    },
+    "Parcel": {
+      "title": "Parcel",
+      "description": "Represents a parcel being shipped.",
+      "type": "object",
+      "properties": {
+        "trackingNumber": { "type": "string", "description": "Unique tracking identifier." },
+        "senderUid": { "type": "string", "description": "UID of the sender." },
+        "recipientName": { "type": "string", "description": "Name of the recipient." },
+        "recipientPhone": { "type": "string", "description": "Phone number of the recipient." },
+        "pickupAddress": { "type": "string", "description": "Where to pick up the parcel." },
+        "deliveryAddress": { "type": "string", "description": "Where to deliver the parcel." },
+        "status": { "type": "string", "enum": ["pending", "picked-up", "sorting", "in-transit", "delivered", "issue"], "description": "Current status of the parcel." },
+        "weight": { "type": "number", "description": "Weight in kg." },
+        "serviceType": { "type": "string", "enum": ["standard", "express", "same-day", "locker"], "description": "Type of delivery service." },
+        "courierUid": { "type": "string", "description": "UID of the assigned courier." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of booking." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Timestamp of last status update." },
+        "history": { "type": "array", "items": { "type": "object" }, "description": "Audit log of status changes." }
+      },
+      "required": ["trackingNumber", "senderUid", "recipientName", "pickupAddress", "deliveryAddress", "status"]
+    },
+    "Locker": {
+      "title": "Smart Locker",
+      "description": "Represents a smart locker location.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique locker ID." },
+        "locationName": { "type": "string", "description": "Name of the location (e.g., TUM Main Campus)." },
+        "address": { "type": "string", "description": "Physical address of the locker." },
+        "compartments": { "type": "array", "items": { "type": "object" }, "description": "List of compartments and their availability." }
+      },
+      "required": ["id", "locationName", "address"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": { "schema": "UserProfile", "description": "User profile documents." },
+    "/parcels/{parcelId}": { "schema": "Parcel", "description": "Parcel tracking documents." },
+    "/lockers/{lockerId}": { "schema": "Locker", "description": "Smart locker location documents." }
+  }
+}

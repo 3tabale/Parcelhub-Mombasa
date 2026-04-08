@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">ParcelHub Mombasa</string>
+    <string name="title_activity_main">ParcelHub Mombasa</string>
+    <string name="package_name">com.parcelhub.mombasa</string>
+    <string name="custom_url_scheme">com.parcelhub.mombasa</string>
+</resources>
